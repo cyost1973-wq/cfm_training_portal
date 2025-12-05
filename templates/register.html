@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>New Employee Registration</h2>
+
+<p style="font-size:14px; margin-bottom:12px;">
+  Complete this form to create your training account. The first person to register
+  will be set as <strong>Admin</strong>; everyone else will be standard users.
+</p>
+
+<form method="post">
+  <label for="first_name">First name</label>
+  <input type="text" name="first_name" id="first_name" required>
+
+  <label for="last_name">Last name</label>
+  <input type="text" name="last_name" id="last_name" required>
+
+  <label for="email">Work email</label>
+  <input type="email" name="email" id="email" required>
+
+  <label for="password">Password</label>
+  <input type="password" name="password" id="password" required>
+
+  <button type="submit">Create Account</button>
+</form>
+
+<p style="margin-top:15px; font-size:14px;">
+  Already have an account?
+  <a href="{{ url_for('login') }}">Go to login</a>
+</p>
+{% endblock %}

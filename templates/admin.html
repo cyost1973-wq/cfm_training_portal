@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Admin – Employee Training Overview</h2>
+
+<p style="font-size:14px; margin-bottom:12px;">
+  Use the filters below to see completion status by module and date range.
+  You can export the filtered data to CSV for Excel.
+</p>
+
+<form method="get" action="{{ url_for('admin_dashboard') }}"
+      style="margin-bottom:20px; padding:10px; border:1px solid #ddd; border-radius:4px;">
+  <div style="display:flex; flex-wrap:wrap; gap:15px; align-items:flex-end;">
+    <div>
+      <label for="module_id"><strong>Module</strong></label>
+      <select name="module_id" id="module_id">
+        <option value="all" {% if module_filter == 'all' %}selected{% endif %}>All modules</option>
+        {% for mid, title in modules %}
+          <option value="{{ mid }}" {% if module_filter == mid %}selected{% endif %}>
+            {{ mid }} – {{ title }}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div>
+      <label for="start_date"><strong>Completion date from</strong></label>
+      <input type="date" name="start_date" id="start_date" value="{{ start_date }}">
+    </div>
+
+    <div>
+      <label for="end_date"><strong>Completion date to</strong></label>
+      <input type="date" name="end_date" id="end_date" value="{{ end_date }}">
+    </div>
+
+    <div>
+      <button type="submit">Apply filters</button>
+    </div>
+  </div>
+</form>
+
+<p style="font-size:14px; margin-bottom:10px;">
+  <a href="{{ url_for('admin_export', module_id=module_filter, start_date=start_date, end_date=end_date) }}">
+    Download CSV export for Excel (current filters)
+  </a>
+</p>
+
+<table>
+  <tr>
+    <th>Employee</th>
+    <th>Email</th>
+    <th>Role</th>
+    <th>Modules Completed (filtered)</th>
+    <th>Total Modules (filtered)</th>
+  </tr>
+  {% for s in summaries %}
+  <tr>
+    <td>{{ s.name }}</td>
+    <td>{{ s.email }}</td>
+    <td>{{ s.role }}</td>
+    <td>{{ s.modules_completed }}</td>
+    <td>{{ s.modules_total }}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% endblock %}

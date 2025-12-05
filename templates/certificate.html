@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Training Completion Certificate</h2>
+
+{% if not modules %}
+  <p>No training records found.</p>
+{% else %}
+  <div style="border:2px solid #d1d5db; padding:25px; margin-top:10px; border-radius:6px; background:#f9fafb;">
+    <h3 style="text-align:center; margin-top:0;">Certificate of Completion</h3>
+
+    <p style="font-size:15px; text-align:center; margin-top:20px;">
+      This certifies that
+    </p>
+
+    <p style="font-size:20px; font-weight:bold; text-align:center; margin:5px 0 20px 0;">
+      {{ user['first_name'] }} {{ user['last_name'] }}
+    </p>
+
+    <p style="font-size:14px; text-align:center; margin-bottom:20px;">
+      has successfully completed all required CFM Safety and Compliance training modules
+      with a passing score of at least 80%.
+    </p>
+
+    <p style="font-size:14px; text-align:center; margin-bottom:6px;">
+      Date of completion:
+      <strong>{{ completion_date }}</strong>
+    </p>
+
+    <p style="font-size:14px; text-align:center; margin-bottom:6px;">
+      Completed modules:
+    </p>
+
+    <ul style="font-size:13px; max-width:500px; margin:0 auto 20px auto;">
+      {% for m in modules %}
+        <li>{{ m.id }} – {{ m.title }} (Best score: {{ m.best_score or "-" }}%)</li>
+      {% endfor %}
+    </ul>
+
+    <p style="font-size:13px; text-align:right; margin-top:25px;">
+      ____________________________<br>
+      Safety Manager / Administrator
+    </p>
+  </div>
+
+  <p style="margin-top:15px; font-size:14px;">
+    Tip: Use your browser’s <strong>Print</strong> function to save this page as a PDF
+    or print a hard copy for your personnel file.
+  </p>
+{% endif %}
+
+<p style="margin-top:15px; font-size:14px;">
+  <a href="{{ url_for('dashboard') }}">Back to dashboard</a>
+</p>
+{% endblock %}

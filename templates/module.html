@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>{{ module_id }} – {{ title }}</h2>
+
+<p style="font-size:14px; margin-bottom:12px;">
+  This module is delivered through your <strong>CFM Training AI</strong> (Custom GPT)
+  plus a short scored quiz. Use the steps below:
+</p>
+
+<ol style="font-size:14px; margin-left:18px; margin-bottom:15px;">
+  <li>Open your <strong>CFM Safety & Compliance Trainer</strong> in another tab.</li>
+  <li>Tell it: <em>"Run module {{ module_id }} – {{ title }} for new hire training."</em></li>
+  <li>Let it walk you through the 5-minute lesson.</li>
+  <li>Take the quiz the AI gives you and have it calculate your final score.</li>
+  <li>Enter your final quiz score below and click <strong>Save score</strong>.</li>
+</ol>
+
+<form method="post" style="max-width:320px;">
+  <label for="score">Final quiz score (0–100)</label>
+  <input type="number" name="score" id="score" min="0" max="100" required>
+
+  <button type="submit">Save score</button>
+</form>
+
+<p style="font-size:13px; margin-top:10px; color:#4b5563;">
+  Scores of <strong>80%</strong> or higher will mark this module
+  as <strong>Completed</strong>. You can re-take the quiz and save a higher score
+  at any time; only your best score is kept.
+</p>
+
+<p style="margin-top:15px; font-size:14px;">
+  <a href="{{ url_for('dashboard') }}">Back to dashboard</a>
+</p>
+{% endblock %}

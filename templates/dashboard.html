@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Welcome, {{ user['first_name'] }} {{ user['last_name'] }}</h2>
+
+<p style="font-size:14px; margin-bottom:10px;">
+  This is your CFM New Hire / Annual Safety & Compliance dashboard.
+  Work through each module in order. A passing score is <strong>80% or higher</strong>.
+</p>
+
+{% if all_done %}
+  <p style="font-size:14px; margin:10px 0; padding:8px; background:#d1fae5; color:#065f46; border-radius:4px;">
+    All required modules are complete with a passing score.
+    You can download your completion certificate using the button below.
+  </p>
+{% endif %}
+
+<p style="margin:10px 0;">
+  <a href="{{ url_for('certificate') }}">
+    <button type="button">View / Print Completion Certificate</button>
+  </a>
+</p>
+
+<table>
+  <tr>
+    <th>Module ID</th>
+    <th>Title</th>
+    <th>Status</th>
+    <th>Best Score</th>
+    <th>Date Completed</th>
+    <th>Action</th>
+  </tr>
+  {% for m in modules %}
+  <tr>
+    <td>{{ m.id }}</td>
+    <td>{{ m.title }}</td>
+    <td>{{ m.status|capitalize }}</td>
+    <td>
+      {% if m.best_score is not none %}
+        {{ m.best_score }}%
+      {% else %}
+        -
+      {% endif %}
+    </td>
+    <td>{{ m.date_completed or "-" }}</td>
+    <td>
+      <a href="{{ url_for('module_view', module_id=m.id) }}">Open module</a>
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+{% endblock %}
