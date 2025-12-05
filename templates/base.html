@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>CFM Training Portal</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f3f4f6;
+      margin: 0;
+      padding: 0;
+    }
+    header {
+      background: #005f7f;
+      color: #fff;
+      padding: 12px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    header h1 {
+      margin: 0;
+      font-size: 20px;
+    }
+    nav a {
+      color: #fff;
+      margin-left: 15px;
+      text-decoration: none;
+      font-size: 14px;
+    }
+    main {
+      max-width: 900px;
+      margin: 25px auto;
+      background: #ffffff;
+      padding: 20px 25px;
+      border-radius: 6px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    }
+    .flash {
+      padding: 8px 10px;
+      margin-bottom: 10px;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+    .flash-success { background:#d1fae5; color:#065f46; }
+    .flash-danger  { background:#fee2e2; color:#991b1b; }
+    .flash-warning { background:#fef3c7; color:#92400e; }
+    .flash-info    { background:#e0f2fe; color:#1d4ed8; }
+
+    label { display:block; margin-top:10px; font-weight:bold; }
+    input[type="text"],
+    input[type="email"],
+    input[type="password"],
+    input[type="number"],
+    input[type="date"],
+    select {
+      width: 100%;
+      padding: 7px 8px;
+      margin-top: 4px;
+      border: 1px solid #d1d5db;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+    button {
+      margin-top: 15px;
+      padding: 8px 18px;
+      border: none;
+      border-radius: 4px;
+      background: #005f7f;
+      color: #fff;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    button:hover { background:#00445b; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
+      font-size: 14px;
+    }
+    table th, table td {
+      border: 1px solid #e5e7eb;
+      padding: 6px 8px;
+      text-align: left;
+    }
+    table th {
+      background:#f3f4f6;
+      font-weight:600;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>CFM Training Portal</h1>
+    <nav>
+      {% if session.get('user_id') %}
+        <a href="{{ url_for('dashboard') }}">Dashboard</a>
+        {% if session.get('role') == 'admin' %}
+          <a href="{{ url_for('admin_dashboard') }}">Admin</a>
+        {% endif %}
+        <a href="{{ url_for('logout') }}">Logout</a>
+      {% else %}
+        <a href="{{ url_for('login') }}">Login</a>
+        <a href="{{ url_for('register') }}">Register</a>
+      {% endif %}
+    </nav>
+  </header>
+
+  <main>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="flash flash-{{ category }}">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>
