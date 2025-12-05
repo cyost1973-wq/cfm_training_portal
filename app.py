@@ -108,8 +108,9 @@ def admin_required(f):
         return f(*args, **kwargs)
     return wrapper
 
-@app.before_first_request
-def setup():
+# ... after get_db() and init_db() definitions, before route definitions:
+
+with app.app_context():
     init_db()
 
 # --- Routes ---
