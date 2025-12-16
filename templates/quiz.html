@@ -1,40 +1,29 @@
 {% extends "base.html" %}
 {% block content %}
 
-<h2>Module {{ module_id }} Quiz</h2>
+<h2>{{ module_id }} – {{ title }} (Quiz)</h2>
 
 <form method="post">
   {% for q in questions %}
-    <div style="margin-bottom:20px; padding:10px; border-bottom:1px solid #ccc;">
+    <div style="margin:14px 0; padding:12px; border:1px solid #ddd; border-radius:6px;">
       <p><strong>{{ loop.index }}. {{ q.question }}</strong></p>
 
-      <label>
-        <input type="radio" name="q_{{ q.id }}" value="A" required>
-        {{ q.answer_a }}
-      </label><br>
-
-      <label>
-        <input type="radio" name="q_{{ q.id }}" value="B">
-        {{ q.answer_b }}
-      </label><br>
+      <label><input type="radio" name="q_{{ q.id }}" value="A" required> A) {{ q.answer_a }}</label><br>
+      <label><input type="radio" name="q_{{ q.id }}" value="B"> B) {{ q.answer_b }}</label><br>
 
       {% if q.answer_c %}
-      <label>
-        <input type="radio" name="q_{{ q.id }}" value="C">
-        {{ q.answer_c }}
-      </label><br>
+        <label><input type="radio" name="q_{{ q.id }}" value="C"> C) {{ q.answer_c }}</label><br>
       {% endif %}
 
       {% if q.answer_d %}
-      <label>
-        <input type="radio" name="q_{{ q.id }}" value="D">
-        {{ q.answer_d }}
-      </label><br>
+        <label><input type="radio" name="q_{{ q.id }}" value="D"> D) {{ q.answer_d }}</label><br>
       {% endif %}
     </div>
   {% endfor %}
 
   <button type="submit">Submit Quiz</button>
+  &nbsp;
+  <a href="{{ url_for('module_view', module_id=module_id) }}">Back to Module</a>
 </form>
 
 {% endblock %}
