@@ -64,6 +64,35 @@ def init_db():
             FOREIGN KEY(employee_id) REFERENCES employees(id)
         )
     """)
+    # Quiz questions table
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS quiz_questions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            module_id TEXT NOT NULL,
+            question TEXT NOT NULL,
+            answer_a TEXT NOT NULL,
+            answer_b TEXT NOT NULL,
+            answer_c TEXT,
+            answer_d TEXT,
+            correct_option TEXT NOT NULL,
+            active INTEGER NOT NULL DEFAULT 1
+        )
+    """)
+
+    # Quiz attempts table
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS quiz_attempts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            employee_id INTEGER NOT NULL,
+            module_id TEXT NOT NULL,
+            score INTEGER NOT NULL,
+            total_questions INTEGER NOT NULL,
+            passed INTEGER NOT NULL,
+            created_at TEXT NOT NULL,
+            FOREIGN KEY(employee_id) REFERENCES employees(id)
+        )
+    """)
+
 
     conn.commit()
     conn.close()
@@ -287,6 +316,88 @@ def module_view(module_id):
                 """,
                 (user["id"], module_id, score, status, date_completed),
             )
+@app.route("/quiz/<module_id>", methods=["GET", "POST"])
+def take_quiz(module_id):
+    user = get_current_user()
+    if not user:
+        return redirect(url_for("login"))
+
+    title = next((t for mid, t in MODULES if mid == module_id), None)
+    if not title:
+        flash("Module not found.", "danger")
+        return redirect(url_for("dashboard"))
+
+    conn = get_db()
+    cur = conn.cursor()
+
+    try:
+        cur.execute("""
+            SELECT id, question, answer_a, answer_b, answer_c, answer_d, correct_option
+            FROM quiz_questions
+            WHERE module_id=? AND active=1
+            ORDER BY RANDOM()
+            LIMIT 10
+        """, (module_id,))
+        questions = cur.fetchall()
+    except sqlite3.OperationalError:
+        conn.close()
+        flash("Quiz system not initialized yet (missing quiz tables).", "danger")
+        return redirect(url_for("module_view", module_id=module_id))
+
+    if not questions:
+        conn.close()
+        flash("No quiz questions loaded yet. Admin must import the quiz bank.", "warning")
+        return redirect(url_for("module_view", module_id=module_id))
+
+    if request.method == "POST":
+        correct = 0
+        total = len(questions)
+
+        for q in questions:
+            chosen = (request.form.get(f"q_{q['id']}") or "").strip().upper()
+            if chosen == (q["correct_option"] or "").strip().upper():
+                correct += 1
+
+        score = int(round((correct / total) * 100))
+        passed = 1 if score >= 80 else 0
+
+        # Save attempt
+        cur.execute("""
+            INSERT INTO quiz_attempts (employee_id, module_id, score, total_questions, passed, created_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (user["id"], module_id, score, total, passed, datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+
+        # Update progress
+        cur.execute("SELECT id, best_score FROM progress WHERE employee_id=? AND module_id=?",
+                    (user["id"], module_id))
+        row = cur.fetchone()
+
+        status = "completed" if passed else "in_progress"
+        date_completed = datetime.now().strftime("%Y-%m-%d") if passed else None
+
+        if row:
+            best = row["best_score"] or 0
+            best_score = max(best, score)
+            cur.execute("""
+                UPDATE progress
+                SET best_score=?, status=?, date_completed=?
+                WHERE id=?
+            """, (best_score, status, date_completed, row["id"]))
+        else:
+            cur.execute("""
+                INSERT INTO progress (employee_id, module_id, best_score, status, date_completed)
+                VALUES (?, ?, ?, ?, ?)
+            """, (user["id"], module_id, score, status, date_completed))
+
+        conn.commit()
+        conn.close()
+
+        flash(f"Quiz submitted. Score: {score}%.", "success" if passed else "warning")
+        return redirect(url_for("dashboard"))
+
+    conn.close()
+    return render_template("quiz.html", module_id=module_id, title=title, questions=questions)
+
 
         conn.commit()
         conn.close()
