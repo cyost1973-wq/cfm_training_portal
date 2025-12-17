@@ -391,23 +391,17 @@ def take_quiz(module_id):
 
         conn.commit()
         conn.close()
+
         flash(f"Quiz submitted. Score: {score}%.", "success" if passed else "warning")
         return redirect(url_for("dashboard"))
 
     conn.close()
-    return render_template("quiz.html", module_id=module_id, title=title, questions=questions)
-
-        conn.commit()
-        conn.close()
-        flash("Score saved.", "success")
-        return redirect(url_for("dashboard"))
-
     return render_template(
-        "module.html",
-        module_id=module_id,
-        title=title,
-        user=user,
-    )
+        "quiz.html", 
+        module_id=module_id, 
+        title=title, 
+        questions=questions
+           )
 
 
 @app.route("/certificate")
