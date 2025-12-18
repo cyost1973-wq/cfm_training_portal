@@ -34,7 +34,12 @@
 </p>
 {% endblock %}
 <hr>
-<a href="{{ url_for('take_quiz', module_id=module_id) }}">
+<a href="{{ url_for('quiz', module_id=module_id) }}">
   <button>Take Quiz</button>
 </a>
+
+<div style="padding:12px; border:1px solid #ddd; border-radius:6px; margin:12px 0;">
+  {{ lesson_html|safe }}
+</div>
+
 
