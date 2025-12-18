@@ -439,7 +439,10 @@ def import_quiz():
             flash("No file uploaded.", "danger")
             return redirect(url_for("import_quiz"))
 
-        reader = csv.DictReader(file.stream.read().decode("utf-8").splitlines())
+        reader = csv.DictReader(
+        file.stream.read().decode("utf-8", errors="ignore").splitlines()
+    )
+
 
         conn = get_db()
         cur = conn.cursor()
