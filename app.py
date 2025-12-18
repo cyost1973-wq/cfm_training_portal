@@ -479,10 +479,10 @@ conn.commit()
 conn.close()
 
 flash(f"Import complete. Inserted: {inserted}. Skipped: {skipped}.", "success")
-return redirect(url_for("admin_dashboard"))
+        return redirect(url_for("admin_dashboard"))
 
 
-        return render_template("import_quiz.html")
+return render_template("import_quiz.html")
 
 
 @app.route("/certificate")
