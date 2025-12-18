@@ -439,36 +439,48 @@ def import_quiz():
             flash("No file uploaded.", "danger")
             return redirect(url_for("import_quiz"))
 
-        reader = csv.DictReader(
-        file.stream.read().decode("utf-8", errors="ignore").splitlines()
-    )
+        reader = csv.DictReader(file.stream.read().decode("utf-8", errors="ignore").splitlines())
 
+conn = get_db()
+cur = conn.cursor()
 
-        conn = get_db()
-        cur = conn.cursor()
+inserted = 0
+skipped = 0
 
-        count = 0
-        for row in reader:
-            cur.execute("""
-                INSERT INTO quiz_questions
-                (module_id, question, answer_a, answer_b, answer_c, answer_d, correct_option)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            """, (
-                row["module_id"],
-                row["question"],
-                row["answer_a"],
-                row["answer_b"],
-                row["answer_c"],
-                row["answer_d"],
-                row["correct_option"].upper()
-            ))
-            count += 1
+for row in reader:
+    # accept common header variations
+    module_id = (row.get("module_id") or row.get("Module ID") or row.get("module") or "").strip()
+    question = (row.get("question") or row.get("Question") or "").strip()
 
-        conn.commit()
-        conn.close()
+    answer_a = (row.get("answer_a") or row.get("Answer A") or row.get("A") or "").strip()
+    answer_b = (row.get("answer_b") or row.get("Answer B") or row.get("B") or "").strip()
+    answer_c = (row.get("answer_c") or row.get("Answer C") or row.get("C") or "").strip()
+    answer_d = (row.get("answer_d") or row.get("Answer D") or row.get("D") or "").strip()
 
-        flash(f"{count} quiz questions imported successfully.", "success")
-        return redirect(url_for("admin_dashboard"))
+    correct_option = (row.get("correct_option") or row.get("Correct Option") or row.get("correct") or "").strip().upper()
+
+    # skip incomplete rows
+    if not module_id or not question or correct_option not in {"A", "B", "C", "D"}:
+        skipped += 1
+        continue
+    if not (answer_a and answer_b and answer_c and answer_d):
+        skipped += 1
+        continue
+
+    cur.execute("""
+        INSERT INTO quiz_questions
+        (module_id, question, answer_a, answer_b, answer_c, answer_d, correct_option)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    """, (module_id, question, answer_a, answer_b, answer_c, answer_d, correct_option))
+
+    inserted += 1
+
+conn.commit()
+conn.close()
+
+flash(f"Import complete. Inserted: {inserted}. Skipped: {skipped}.", "success")
+return redirect(url_for("admin_dashboard"))
+
 
     return render_template("import_quiz.html")
 
