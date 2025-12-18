@@ -433,56 +433,64 @@ def take_quiz(module_id):
 @app.route("/admin/import-quiz", methods=["GET", "POST"])
 @admin_required
 def import_quiz():
+
     if request.method == "POST":
         file = request.files.get("file")
-        if not file:
+        if not file or file.filename.strip() == "":
             flash("No file uploaded.", "danger")
             return redirect(url_for("import_quiz"))
 
-reader = csv.DictReader(file.stream.read().decode("utf-8", errors="ignore").splitlines())
+        raw = file.stream.read()
 
-conn = get_db()
-cur = conn.cursor()
+        try:
+            text = raw.decode("utf-8")
+        except UnicodeDecodeError:
+            text = raw.decode("cp1252", errors="replace")
 
-inserted = 0
-skipped = 0
+        lines = text.splitlines()
+        reader = csv.DictReader(lines)
 
-for row in reader:
-    # accept common header variations
-    module_id = (row.get("module_id") or row.get("Module ID") or row.get("module") or "").strip()
-    question = (row.get("question") or row.get("Question") or "").strip()
+        conn = get_db()
+        cur = conn.cursor()
 
-    answer_a = (row.get("answer_a") or row.get("Answer A") or row.get("A") or "").strip()
-    answer_b = (row.get("answer_b") or row.get("Answer B") or row.get("B") or "").strip()
-    answer_c = (row.get("answer_c") or row.get("Answer C") or row.get("C") or "").strip()
-    answer_d = (row.get("answer_d") or row.get("Answer D") or row.get("D") or "").strip()
+        inserted = 0
+        skipped = 0
 
-    correct_option = (row.get("correct_option") or row.get("Correct Option") or row.get("correct") or "").strip().upper()
+        for row in reader:
+            module_id = (row.get("module_id") or row.get("Module ID") or "").strip()
+            question = (row.get("question") or row.get("Question") or "").strip()
 
-    # skip incomplete rows
-    if not module_id or not question or correct_option not in {"A", "B", "C", "D"}:
-        skipped += 1
-        continue
-    if not (answer_a and answer_b and answer_c and answer_d):
-        skipped += 1
-        continue
+            answer_a = (row.get("answer_a") or row.get("Answer A") or "").strip()
+            answer_b = (row.get("answer_b") or row.get("Answer B") or "").strip()
+            answer_c = (row.get("answer_c") or row.get("Answer C") or "").strip()
+            answer_d = (row.get("answer_d") or row.get("Answer D") or "").strip()
 
-    cur.execute("""
-        INSERT INTO quiz_questions
-        (module_id, question, answer_a, answer_b, answer_c, answer_d, correct_option)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-    """, (module_id, question, answer_a, answer_b, answer_c, answer_d, correct_option))
+            correct_option = (row.get("correct_option") or row.get("Correct Option") or "").strip().upper()
 
-    inserted += 1
+            if not module_id or not question or correct_option not in {"A", "B", "C", "D"}:
+                skipped += 1
+                continue
 
-conn.commit()
-conn.close()
+            if not (answer_a and answer_b and answer_c and answer_d):
+                skipped += 1
+                continue
 
-flash(f"Import complete. Inserted: {inserted}. Skipped: {skipped}.", "success")
+            cur.execute("""
+                INSERT INTO quiz_questions
+                (module_id, question, answer_a, answer_b, answer_c, answer_d, correct_option)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, (module_id, question, answer_a, answer_b, answer_c, answer_d, correct_option))
+
+            inserted += 1
+
+        conn.commit()
+        conn.close()
+
+        flash(f"Import complete. Inserted: {inserted}. Skipped: {skipped}.", "success")
         return redirect(url_for("admin_dashboard"))
 
-
-return render_template("import_quiz.html")
+    # THIS LINE MUST NOT BE INDENTED
+    return render_template("import_quiz.html")
 
 
 @app.route("/certificate")
