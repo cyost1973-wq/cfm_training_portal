@@ -6,6 +6,8 @@ from functools import wraps
 import csv
 from io import StringIO
 from werkzeug.security import generate_password_hash, check_password_hash
+import markdown
+
 
 app = Flask(__name__)
 
@@ -277,25 +279,24 @@ def module_view(module_id):
         flash("Module not found.", "danger")
         return redirect(url_for("dashboard"))
 
+    # POST: save score entered by user
     if request.method == "POST":
         try:
             score = int(request.form["score"])
-        except ValueError:
+        except (ValueError, KeyError):
             flash("Please enter a valid numeric score.", "danger")
             return redirect(url_for("module_view", module_id=module_id))
 
         conn = get_db()
         cur = conn.cursor()
         cur.execute(
-            "SELECT * FROM progress WHERE employee_id=? AND module_id=?",
+            "SELECT id, best_score FROM progress WHERE employee_id=? AND module_id=?",
             (user["id"], module_id),
         )
         row = cur.fetchone()
 
         status = "completed" if score >= 80 else "in_progress"
-        date_completed = (
-            datetime.now().strftime("%Y-%m-%d") if status == "completed" else None
-        )
+        date_completed = datetime.now().strftime("%Y-%m-%d") if status == "completed" else None
 
         if row:
             best = row["best_score"] or 0
@@ -316,6 +317,32 @@ def module_view(module_id):
                 """,
                 (user["id"], module_id, score, status, date_completed),
             )
+
+        conn.commit()
+        conn.close()
+
+        flash("Score saved.", "success")
+        return redirect(url_for("dashboard"))
+
+    # GET: load lesson content from modules/M#.md
+    lesson_path = os.path.join(BASE_DIR, "modules", f"{module_id}.md")
+    if os.path.exists(lesson_path):
+        with open(lesson_path, "r", encoding="utf-8") as f:
+            md_text = f.read()
+        lesson_html = markdown.markdown(md_text, extensions=["extra"])
+    else:
+        lesson_html = "<p><em>Lesson content not uploaded yet.</em></p>"
+
+    return render_template(
+        "module.html",
+        module_id=module_id,
+        title=title,
+        user=user,
+        lesson_html=lesson_html,
+    )
+
+
+      
 @app.route("/quiz/<module_id>", methods=["GET", "POST"])
 def take_quiz(module_id):
     user = get_current_user()
