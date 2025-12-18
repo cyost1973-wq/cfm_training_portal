@@ -77,7 +77,7 @@ def init_db():
             answer_c TEXT,
             answer_d TEXT,
             correct_option TEXT NOT NULL,
-            active INTEGER NOT NULL DEFAULT 1
+            active INTEGER DEFAULT 1
         )
     """)
 
@@ -429,6 +429,45 @@ def take_quiz(module_id):
         title=title, 
         questions=questions
            )
+
+@app.route("/admin/import-quiz", methods=["GET", "POST"])
+@admin_required
+def import_quiz():
+    if request.method == "POST":
+        file = request.files.get("file")
+        if not file:
+            flash("No file uploaded.", "danger")
+            return redirect(url_for("import_quiz"))
+
+        reader = csv.DictReader(file.stream.read().decode("utf-8").splitlines())
+
+        conn = get_db()
+        cur = conn.cursor()
+
+        count = 0
+        for row in reader:
+            cur.execute("""
+                INSERT INTO quiz_questions
+                (module_id, question, answer_a, answer_b, answer_c, answer_d, correct_option)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, (
+                row["module_id"],
+                row["question"],
+                row["answer_a"],
+                row["answer_b"],
+                row["answer_c"],
+                row["answer_d"],
+                row["correct_option"].upper()
+            ))
+            count += 1
+
+        conn.commit()
+        conn.close()
+
+        flash(f"{count} quiz questions imported successfully.", "success")
+        return redirect(url_for("admin_dashboard"))
+
+    return render_template("import_quiz.html")
 
 
 @app.route("/certificate")
