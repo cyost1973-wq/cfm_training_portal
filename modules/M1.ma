@@ -1,16 +1,4 @@
-# M1 — Welcome & CFM Culture
 
-## Objectives
-- (objective 1)
-- (objective 2)
-- (objective 3)
-
-## 5-minute lesson
-(Paste your full M1 lesson wording here. It can be multiple paragraphs.)
-
-## Quick reminders
-- (reminder 1)
-- (reminder 2)
 
 MODULE M1 — WELCOME & CFM CULTURE
 5-Minute Lesson Script (Hybrid Style)
@@ -23,16 +11,16 @@ Think of this as your foundation. The rest of your training will make much more 
 
 SECTION 1 – OUR CULTURAL PILLARS (60 seconds)
 “CFM is built on three cultural pillars:
-Professionalism, Safety, and Accountability.
-Professionalism means that no matter how busy the day becomes, we communicate respectfully, we protect confidentiality, and we take pride in the service we provide. Our patients feel it the moment they walk in — and so will you.
-Safety is not a buzzword here. It is an expectation. Every employee is responsible for noticing hazards, preventing errors, and speaking up. Safety isn’t a supervisor’s job — it’s everyone’s job.
-Accountability means we own our work. If something isn’t right, we don’t ignore it. We fix it, or we find someone who can. This is how we build trust with one another and deliver consistent care.”
+* Professionalism, Safety, and Accountability.
+* Professionalism means that no matter how busy the day becomes, we communicate respectfully, we protect confidentiality, and we take pride in the service we provide. Our patients feel it the moment they walk in — and so will you.
+* Safety is not a buzzword here. It is an expectation. Every employee is responsible for noticing hazards, preventing errors, and speaking up. Safety isn’t a supervisor’s job — it’s everyone’s job.
+* Accountability means we own our work. If something isn’t right, we don’t ignore it. We fix it, or we find someone who can. This is how we build trust with one another and deliver consistent care.”
 
 SECTION 2 – HOW WE COMMUNICATE (60 seconds)
 “At CFM, communication matters. Small misunderstandings can lead to mistakes, so we use a few key habits:
-Closed-loop communication — when someone gives you information, you repeat it back in your own words. This eliminates confusion and prevents errors.
-Asking questions early — we don’t wait until something goes wrong to get clarification. If you’re unsure about a task, policy, or expectation, ask. You will never be criticized for wanting to do things the right way.
-Respectful dialogue — we communicate directly, calmly, and without gossip. Our patients and coworkers depend on us to be clear and professional.”
+* Closed-loop communication — when someone gives you information, you repeat it back in your own words. This eliminates confusion and prevents errors.
+* Asking questions early — we don’t wait until something goes wrong to get clarification. If you’re unsure about a task, policy, or expectation, ask. You will never be criticized for wanting to do things the right way.
+* Respectful dialogue — we communicate directly, calmly, and without gossip. Our patients and coworkers depend on us to be clear and professional.”
 
 SECTION 3 – HOW WE SHOW UP EVERY DAY (60–75 seconds)
 “CFM culture is something we practice through small, consistent actions.
@@ -86,11 +74,11 @@ These habits create a workplace where people enjoy working and patients feel car
 
 CLOSING SUMMARY (30 seconds)
 “To summarize:
-CFM culture is built on character, professionalism, safety, and accountability.
-We communicate clearly.
-We work respectfully.
-We protect our patients, our coworkers, and ourselves.
-You are now part of that culture, and your actions will help shape it every day.
+* CFM culture is built on character, professionalism, safety, and accountability.
+* We communicate clearly.
+* We work respectfully.
+* We protect our patients, our coworkers, and ourselves.
+* You are now part of that culture, and your actions will help shape it every day.
 When you're ready, proceed to take the Module M1 quiz.”
 
 Key reminders

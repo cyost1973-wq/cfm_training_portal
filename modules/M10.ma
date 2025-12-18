@@ -1,16 +1,4 @@
-# M10 — WORKPLACE VIOLENCE & HARASSMENT PREVENTION
 
-## Objectives
-- (objective 1)
-- (objective 2)
-- (objective 3)
-
-## 5-minute lesson
-(Paste your full M1 lesson wording here. It can be multiple paragraphs.)
-
-## Quick reminders
-- (reminder 1)
-- (reminder 2)
 
 MODULE M10 — WORKPLACE VIOLENCE & HARASSMENT PREVENTION
 5-Minute Lesson Script
