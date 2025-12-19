@@ -24,28 +24,43 @@
   You may retake the quiz at any time — <strong>only your highest score is saved automatically</strong>.
 </p>
 
-<ol style="font-size:14px; margin-left:18px; margin-bottom:15px;">
-  <li>Open your <strong>CFM Safety & Compliance Trainer</strong> in another tab.</li>
-  <li>Tell it: <em>"Run module {{ module_id }} – {{ title }} for new hire training."</em></li>
-  <li>Let it walk you through the 5-minute lesson.</li>
-  <li>Take the quiz the AI gives you and have it calculate your final score.</li>
-  <li>Enter your final quiz score below and click <strong>Save score</strong>.</li>
-</ol>
+{% extends "base.html" %}
 
-<form method="post" style="max-width:320px;">
-  <label for="score">Final quiz score (0–100)</label>
-  <input type="number" name="score" id="score" min="0" max="100" required>
+{% block content %}
+<h1>{{ module_id }} — {{ title }}</h1>
 
-  <button type="submit">Save score</button>
-</form>
+<p><strong>This module is completed inside the CFM Training Portal.</strong></p>
 
-<p style="font-size:13px; margin-top:10px; color:#4b5563;">
-  Scores of <strong>80%</strong> or higher will mark this module
-  as <strong>Completed</strong>. You can re-take the quiz and save a higher score
-  at any time; only your best score is kept.
+<p>
+  Read the lesson content below. When you finish, take the quiz to record your score.
 </p>
 
-<p style="margin-top:15px; font-size:14px;">
+<p>
+  <em>Optional:</em> If you prefer audio instruction, you may use the CFM Training AI to listen to this lesson.
+  The quiz is still completed and recorded here in the portal.
+</p>
+
+<p>
+  A score of <strong>80%</strong> or higher is required to complete this module.
+  You may retake the quiz at any time — <strong>only your highest score is saved automatically.</strong>
+</p>
+
+<hr>
+
+<!-- Lesson content pulled from modules/M#.md -->
+<div class="lesson-content">
+  {{ lesson_html|safe }}
+</div>
+
+<hr>
+
+<p>
+  <a href="{{ url_for('take_quiz', module_id=module_id) }}">
+    <button type="button">Take Quiz</button>
+  </a>
+</p>
+
+<p>
   <a href="{{ url_for('dashboard') }}">Back to dashboard</a>
 </p>
 {% endblock %}
