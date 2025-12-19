@@ -1,32 +1,6 @@
 {% extends "base.html" %}
 
 {% block content %}
-<h2>{{ module_id }} – {{ title }}</h2>
-
-<p style="font-size:14px; margin-bottom:12px;">
- <p style="font-size:14px; margin-bottom:12px;">
-  This module is completed <strong>inside the CFM Training Portal</strong>.
-</p>
-
-<p style="font-size:14px; margin-bottom:12px;">
-  Read through the lesson content on this page carefully. When you finish,
-  complete the quiz to record your score.
-</p>
-
-<p style="font-size:14px; margin-bottom:12px;">
-  <strong>Optional:</strong> If you prefer audio instruction, you may also
-  use the CFM Training AI to listen to this lesson. The quiz is still
-  completed and recorded here in the portal.
-</p>
-
-<p style="font-size:14px; margin-bottom:16px;">
-  A score of <strong>80% or higher</strong> is required to complete this module.
-  You may retake the quiz at any time — <strong>only your highest score is saved automatically</strong>.
-</p>
-
-{% extends "base.html" %}
-
-{% block content %}
 <h1>{{ module_id }} — {{ title }}</h1>
 
 <p><strong>This module is completed inside the CFM Training Portal.</strong></p>
@@ -47,7 +21,6 @@
 
 <hr>
 
-<!-- Lesson content pulled from modules/M#.md -->
 <div class="lesson-content">
   {{ lesson_html|safe }}
 </div>
@@ -64,13 +37,5 @@
   <a href="{{ url_for('dashboard') }}">Back to dashboard</a>
 </p>
 {% endblock %}
-<hr>
-<a href="{{ url_for('quiz', module_id=module_id) }}">
-  <button>Take Quiz</button>
-</a>
-
-<div style="padding:12px; border:1px solid #ddd; border-radius:6px; margin:12px 0;">
-  {{ lesson_html|safe }}
-</div>
 
 
