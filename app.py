@@ -143,6 +143,58 @@ def admin_required(f):
 
 with app.app_context():
     init_db()
+    seed_quiz_questions()
+
+def seed_quiz_questions():
+    seed_path = os.path.join(BASE_DIR, "data", "quiz_questions.csv")
+    if not os.path.exists(seed_path):
+        return
+
+    conn = get_db()
+    cur = conn.cursor()
+
+    # Create a uniqueness rule so seeding won't duplicate if it runs again
+    cur.execute("""
+        CREATE UNIQUE INDEX IF NOT EXISTS uq_quiz_unique
+        ON quiz_questions (module_id, question)
+    """)
+
+    # Count existing
+    cur.execute("SELECT COUNT(*) AS cnt FROM quiz_questions")
+    existing = cur.fetchone()["cnt"] or 0
+
+    # If already seeded, do nothing
+    if existing > 0:
+        conn.close()
+        return
+
+    import csv
+
+    with open(seed_path, "r", encoding="utf-8", errors="replace") as f:
+        reader = csv.DictReader(f)
+        inserted = 0
+        for row in reader:
+            module_id = (row.get("module_id") or row.get("Module ID") or "").strip()
+            question = (row.get("question") or row.get("Question") or "").strip()
+            answer_a = (row.get("answer_a") or row.get("Answer A") or "").strip()
+            answer_b = (row.get("answer_b") or row.get("Answer B") or "").strip()
+            answer_c = (row.get("answer_c") or row.get("Answer C") or "").strip()
+            answer_d = (row.get("answer_d") or row.get("Answer D") or "").strip()
+            correct_option = (row.get("correct_option") or row.get("Correct Option") or "").strip().upper()
+
+            if not module_id or not question or correct_option not in {"A","B","C","D"}:
+                continue
+
+            cur.execute("""
+                INSERT OR IGNORE INTO quiz_questions
+                (module_id, question, answer_a, answer_b, answer_c, answer_d, correct_option, active)
+                VALUES (?, ?, ?, ?, ?, ?, ?, 1)
+            """, (module_id, question, answer_a, answer_b, answer_c, answer_d, correct_option))
+            inserted += 1
+
+    conn.commit()
+    conn.close()
+
 
 # --- Routes ---
 
