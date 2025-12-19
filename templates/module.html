@@ -10,18 +10,48 @@
 </p>
 
 <p>
-  <em>Optional:</em> If you prefer audio instruction, you may use the CFM Training AI to listen to this lesson.
-  The quiz is still completed and recorded here in the portal.
-</p>
-
-<p>
   A score of <strong>80%</strong> or higher is required to complete this module.
   You may retake the quiz at any time — <strong>only your highest score is saved automatically.</strong>
 </p>
 
 <hr>
 
-<div class="lesson-content">
+<!-- AUDIO NARRATION CONTROLS -->
+<div style="padding:12px; border:1px solid #ddd; border-radius:8px; margin:12px 0;">
+  <h3 style="margin:0 0 8px 0;">Audio Narration</h3>
+
+  <p style="margin:0 0 10px 0; font-size:14px;">
+    Click Play to have this lesson read out loud. You can pause/resume at any time.
+  </p>
+
+  <div style="display:flex; gap:8px; flex-wrap:wrap;">
+    <button type="button" id="btnPlay">Play</button>
+    <button type="button" id="btnPause" disabled>Pause</button>
+    <button type="button" id="btnResume" disabled>Resume</button>
+    <button type="button" id="btnStop" disabled>Stop</button>
+  </div>
+
+  <div style="margin-top:10px; display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+    <label style="font-size:14px;">
+      Speed:
+      <select id="voiceRate">
+        <option value="0.9">Slow</option>
+        <option value="1" selected>Normal</option>
+        <option value="1.1">Fast</option>
+      </select>
+    </label>
+
+    <label style="font-size:14px;">
+      Voice:
+      <select id="voiceSelect"></select>
+    </label>
+  </div>
+
+  <p id="voiceStatus" style="margin:10px 0 0 0; font-size:13px; color:#555;"></p>
+</div>
+
+<!-- Lesson content pulled from modules/M#.md -->
+<div id="lessonContent" class="lesson-content">
   {{ lesson_html|safe }}
 </div>
 
@@ -36,6 +66,171 @@
 <p>
   <a href="{{ url_for('dashboard') }}">Back to dashboard</a>
 </p>
+
+<script>
+(function () {
+  const synth = window.speechSynthesis;
+
+  const btnPlay = document.getElementById("btnPlay");
+  const btnPause = document.getElementById("btnPause");
+  const btnResume = document.getElementById("btnResume");
+  const btnStop = document.getElementById("btnStop");
+  const voiceSelect = document.getElementById("voiceSelect");
+  const voiceRate = document.getElementById("voiceRate");
+  const voiceStatus = document.getElementById("voiceStatus");
+  const lessonDiv = document.getElementById("lessonContent");
+
+  let voices = [];
+  let utterance = null;
+  let isSpeaking = false;
+
+  function setStatus(msg) {
+    voiceStatus.textContent = msg || "";
+  }
+
+  function enableControls(state) {
+    // state: "idle" | "speaking" | "paused"
+    if (state === "idle") {
+      btnPlay.disabled = false;
+      btnPause.disabled = true;
+      btnResume.disabled = true;
+      btnStop.disabled = true;
+      setStatus("Ready.");
+    } else if (state === "speaking") {
+      btnPlay.disabled = true;
+      btnPause.disabled = false;
+      btnResume.disabled = true;
+      btnStop.disabled = false;
+      setStatus("Playing audio narration…");
+    } else if (state === "paused") {
+      btnPlay.disabled = true;
+      btnPause.disabled = true;
+      btnResume.disabled = false;
+      btnStop.disabled = false;
+      setStatus("Paused.");
+    }
+  }
+
+  function getLessonText() {
+    // Pull visible text, collapse whitespace
+    const text = (lessonDiv?.innerText || "").replace(/\s+/g, " ").trim();
+    return text;
+  }
+
+  function populateVoices() {
+    voices = synth.getVoices() || [];
+    voiceSelect.innerHTML = "";
+
+    if (!voices.length) {
+      setStatus("No voices found yet. If this persists, try reloading the page.");
+      return;
+    }
+
+    // Prefer English voices first
+    const sorted = [...voices].sort((a, b) => {
+      const aEn = (a.lang || "").toLowerCase().startsWith("en");
+      const bEn = (b.lang || "").toLowerCase().startsWith("en");
+      if (aEn && !bEn) return -1;
+      if (!aEn && bEn) return 1;
+      return (a.name || "").localeCompare(b.name || "");
+    });
+
+    sorted.forEach((v, idx) => {
+      const opt = document.createElement("option");
+      opt.value = v.name;
+      opt.textContent = `${v.name} (${v.lang})`;
+      voiceSelect.appendChild(opt);
+
+      // Choose a reasonable default
+      if (idx === 0) voiceSelect.value = v.name;
+    });
+
+    setStatus("Ready.");
+  }
+
+  // Some browsers load voices asynchronously
+  populateVoices();
+  if (typeof synth.onvoiceschanged !== "undefined") {
+    synth.onvoiceschanged = populateVoices;
+  }
+
+  function stopSpeaking() {
+    try {
+      synth.cancel();
+    } catch (e) {}
+    utterance = null;
+    isSpeaking = false;
+    enableControls("idle");
+  }
+
+  btnPlay.addEventListener("click", () => {
+    if (!("speechSynthesis" in window)) {
+      alert("Audio narration is not supported in this browser. Please use Chrome or Edge.");
+      return;
+    }
+
+    const text = getLessonText();
+    if (!text) {
+      alert("No lesson text found to read. Please ensure lesson content is loaded.");
+      return;
+    }
+
+    // Stop anything already speaking
+    stopSpeaking();
+
+    utterance = new SpeechSynthesisUtterance(text);
+
+    // Voice
+    const chosenName = voiceSelect.value;
+    const chosen = (synth.getVoices() || []).find(v => v.name === chosenName);
+    if (chosen) utterance.voice = chosen;
+
+    // Rate (speed)
+    utterance.rate = parseFloat(voiceRate.value) || 1;
+
+    utterance.onstart = () => {
+      isSpeaking = true;
+      enableControls("speaking");
+    };
+
+    utterance.onend = () => {
+      stopSpeaking();
+      setStatus("Finished.");
+    };
+
+    utterance.onerror = () => {
+      stopSpeaking();
+      setStatus("Audio error. Try Play again or choose a different voice.");
+    };
+
+    synth.speak(utterance);
+  });
+
+  btnPause.addEventListener("click", () => {
+    if (!isSpeaking) return;
+    try {
+      synth.pause();
+      enableControls("paused");
+    } catch (e) {}
+  });
+
+  btnResume.addEventListener("click", () => {
+    try {
+      synth.resume();
+      enableControls("speaking");
+    } catch (e) {}
+  });
+
+  btnStop.addEventListener("click", () => {
+    stopSpeaking();
+  });
+
+  // Clean up if user navigates away
+  window.addEventListener("beforeunload", () => {
+    try { synth.cancel(); } catch (e) {}
+  });
+
+  enableControls("idle");
+})();
+</script>
 {% endblock %}
-
-
