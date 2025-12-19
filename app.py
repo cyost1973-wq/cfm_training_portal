@@ -761,6 +761,22 @@ def admin_export():
         headers={"Content-Disposition": "attachment; filename=cfm_training_export.csv"},
     )
 
+@app.route("/admin/quiz-counts")
+@admin_required
+def quiz_counts():
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT module_id, COUNT(*) AS cnt
+        FROM quiz_questions
+        WHERE active = 1
+        GROUP BY module_id
+        ORDER BY module_id
+    """)
+    rows = cur.fetchall()
+    conn.close()
+
+    return "<br>".join([f"{r['module_id']}: {r['cnt']}" for r in rows])
 
 @app.route("/logout")
 def logout():
