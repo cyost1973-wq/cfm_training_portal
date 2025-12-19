@@ -5,20 +5,25 @@ import os
 from functools import wraps
 import csv
 from io import StringIO
+
 from werkzeug.security import generate_password_hash, check_password_hash
 import markdown
-
 
 app = Flask(__name__)
 
 # Secret key from environment (set this in Render)
 app.secret_key = os.getenv("SECRET_KEY", "dev-secret-change-me")
 
-# SQLite DB path (local file). For simple Render use, this is OK.
+# --- Paths ---
 BASE_DIR = os.path.dirname(__file__)
-DB_PATH = os.path.join(BASE_DIR, "training.db")
 
-# --- Required modules (same as Custom GPT uses) ---
+# SQLite DB path
+# NOTE: If you later add a Render Persistent Disk, set DATA_DIR=/path/to/mount and DB will live there.
+DATA_DIR = os.getenv("DATA_DIR", BASE_DIR)
+os.makedirs(DATA_DIR, exist_ok=True)
+DB_PATH = os.path.join(DATA_DIR, "training.db")
+
+# --- Required modules ---
 MODULES = [
     ("M1", "Welcome & CFM Culture"),
     ("M2", "CFM General Safety Rules"),
@@ -32,57 +37,68 @@ MODULES = [
     ("M10", "Workplace Violence & Harassment Prevention"),
 ]
 
-# --- DB helpers ---
+# -------------------------
+# DB helpers
+# -------------------------
 def get_db():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
 
+
 def init_db():
     conn = get_db()
     cur = conn.cursor()
 
-    # Users table
-    cur.execute("""
+    # Employees / Users table
+    cur.execute(
+        """
         CREATE TABLE IF NOT EXISTS employees (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             first_name TEXT NOT NULL,
-            last_name TEXT NOT NULL,
-            email TEXT UNIQUE NOT NULL,
-            password TEXT NOT NULL,
-            role TEXT NOT NULL DEFAULT 'staff'
+            last_name  TEXT NOT NULL,
+            email      TEXT UNIQUE NOT NULL,
+            password   TEXT NOT NULL,
+            role       TEXT NOT NULL DEFAULT 'staff'
         )
-    """)
+        """
+    )
 
     # Progress table
-    cur.execute("""
+    cur.execute(
+        """
         CREATE TABLE IF NOT EXISTS progress (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             employee_id INTEGER NOT NULL,
-            module_id TEXT NOT NULL,
-            best_score INTEGER,
-            status TEXT NOT NULL DEFAULT 'not_started',
+            module_id   TEXT NOT NULL,
+            best_score  INTEGER,
+            status      TEXT NOT NULL DEFAULT 'not_started',
             date_completed TEXT,
             FOREIGN KEY(employee_id) REFERENCES employees(id)
         )
-    """)
+        """
+    )
+
     # Quiz questions table
-    cur.execute("""
+    cur.execute(
+        """
         CREATE TABLE IF NOT EXISTS quiz_questions (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             module_id TEXT NOT NULL,
-            question TEXT NOT NULL,
-            answer_a TEXT NOT NULL,
-            answer_b TEXT NOT NULL,
-            answer_c TEXT,
-            answer_d TEXT,
+            question  TEXT NOT NULL,
+            answer_a  TEXT NOT NULL,
+            answer_b  TEXT NOT NULL,
+            answer_c  TEXT NOT NULL,
+            answer_d  TEXT NOT NULL,
             correct_option TEXT NOT NULL,
-            active INTEGER DEFAULT 1
+            active INTEGER NOT NULL DEFAULT 1
         )
-    """)
+        """
+    )
 
     # Quiz attempts table
-    cur.execute("""
+    cur.execute(
+        """
         CREATE TABLE IF NOT EXISTS quiz_attempts (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             employee_id INTEGER NOT NULL,
@@ -93,12 +109,79 @@ def init_db():
             created_at TEXT NOT NULL,
             FOREIGN KEY(employee_id) REFERENCES employees(id)
         )
-    """)
+        """
+    )
 
+    # Unique index so seeding/import can be safely repeated
+    cur.execute(
+        """
+        CREATE UNIQUE INDEX IF NOT EXISTS uq_quiz_unique
+        ON quiz_questions (module_id, question)
+        """
+    )
 
     conn.commit()
     conn.close()
 
+
+def seed_quiz_questions():
+    """
+    One-time seed from repo file: data/quiz_questions.csv
+    - Safe to run on every startup due to unique index + INSERT OR IGNORE
+    - If table already has questions, we skip seeding.
+    """
+    seed_path = os.path.join(BASE_DIR, "data", "quiz_questions.csv")
+    if not os.path.exists(seed_path):
+        return
+
+    conn = get_db()
+    cur = conn.cursor()
+
+    cur.execute("SELECT COUNT(*) AS cnt FROM quiz_questions")
+    existing = cur.fetchone()["cnt"] or 0
+    if existing > 0:
+        conn.close()
+        return
+
+    with open(seed_path, "r", encoding="utf-8", errors="replace") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            module_id = (row.get("module_id") or row.get("Module ID") or "").strip()
+            question = (row.get("question") or row.get("Question") or "").strip()
+
+            answer_a = (row.get("answer_a") or row.get("Answer A") or "").strip()
+            answer_b = (row.get("answer_b") or row.get("Answer B") or "").strip()
+            answer_c = (row.get("answer_c") or row.get("Answer C") or "").strip()
+            answer_d = (row.get("answer_d") or row.get("Answer D") or "").strip()
+
+            correct_option = (row.get("correct_option") or row.get("Correct Option") or "").strip().upper()
+
+            if not module_id or not question or correct_option not in {"A", "B", "C", "D"}:
+                continue
+            if not (answer_a and answer_b and answer_c and answer_d):
+                continue
+
+            cur.execute(
+                """
+                INSERT OR IGNORE INTO quiz_questions
+                (module_id, question, answer_a, answer_b, answer_c, answer_d, correct_option, active)
+                VALUES (?, ?, ?, ?, ?, ?, ?, 1)
+                """,
+                (module_id, question, answer_a, answer_b, answer_c, answer_d, correct_option),
+            )
+
+    conn.commit()
+    conn.close()
+
+
+# Initialize database + seed quizzes at startup
+with app.app_context():
+    init_db()
+    seed_quiz_questions()
+
+# -------------------------
+# Auth / helpers
+# -------------------------
 def get_current_user():
     user_id = session.get("user_id")
     if not user_id:
@@ -110,7 +193,8 @@ def get_current_user():
     conn.close()
     return user
 
-def ensure_progress_rows(employee_id):
+
+def ensure_progress_rows(employee_id: int):
     conn = get_db()
     cur = conn.cursor()
     for module_id, _ in MODULES:
@@ -127,6 +211,7 @@ def ensure_progress_rows(employee_id):
     conn.commit()
     conn.close()
 
+
 def admin_required(f):
     @wraps(f)
     def wrapper(*args, **kwargs):
@@ -137,70 +222,13 @@ def admin_required(f):
                 return redirect(url_for("dashboard"))
             return redirect(url_for("login"))
         return f(*args, **kwargs)
+
     return wrapper
 
-# ... after get_db() and init_db() definitions, before route definitions:
 
-with app.app_context():
-    init_db()
-
-def seed_quiz_questions():
-    seed_path = os.path.join(BASE_DIR, "data", "quiz_questions.csv")
-    if not os.path.exists(seed_path):
-        return
-
-with app.app_context():
-    init_db()
-    seed_quiz_questions()
-
-    conn = get_db()
-    cur = conn.cursor()
-
-    # Create a uniqueness rule so seeding won't duplicate if it runs again
-    cur.execute("""
-        CREATE UNIQUE INDEX IF NOT EXISTS uq_quiz_unique
-        ON quiz_questions (module_id, question)
-    """)
-
-    # Count existing
-    cur.execute("SELECT COUNT(*) AS cnt FROM quiz_questions")
-    existing = cur.fetchone()["cnt"] or 0
-
-    # If already seeded, do nothing
-    if existing > 0:
-        conn.close()
-        return
-
-    import csv
-
-    with open(seed_path, "r", encoding="utf-8", errors="replace") as f:
-        reader = csv.DictReader(f)
-        inserted = 0
-        for row in reader:
-            module_id = (row.get("module_id") or row.get("Module ID") or "").strip()
-            question = (row.get("question") or row.get("Question") or "").strip()
-            answer_a = (row.get("answer_a") or row.get("Answer A") or "").strip()
-            answer_b = (row.get("answer_b") or row.get("Answer B") or "").strip()
-            answer_c = (row.get("answer_c") or row.get("Answer C") or "").strip()
-            answer_d = (row.get("answer_d") or row.get("Answer D") or "").strip()
-            correct_option = (row.get("correct_option") or row.get("Correct Option") or "").strip().upper()
-
-            if not module_id or not question or correct_option not in {"A","B","C","D"}:
-                continue
-
-            cur.execute("""
-                INSERT OR IGNORE INTO quiz_questions
-                (module_id, question, answer_a, answer_b, answer_c, answer_d, correct_option, active)
-                VALUES (?, ?, ?, ?, ?, ?, ?, 1)
-            """, (module_id, question, answer_a, answer_b, answer_c, answer_d, correct_option))
-            inserted += 1
-
-    conn.commit()
-    conn.close()
-
-
-# --- Routes ---
-
+# -------------------------
+# Routes
+# -------------------------
 @app.route("/")
 def index():
     if "user_id" in session:
@@ -211,15 +239,12 @@ def index():
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
-        email = request.form["email"].strip().lower()
-        password = request.form["password"].strip()
+        email = request.form.get("email", "").strip().lower()
+        password = request.form.get("password", "").strip()
 
         conn = get_db()
         cur = conn.cursor()
-        cur.execute(
-            "SELECT * FROM employees WHERE email=?",
-            (email,),
-        )
+        cur.execute("SELECT * FROM employees WHERE email=?", (email,))
         user = cur.fetchone()
         conn.close()
 
@@ -236,28 +261,32 @@ def login():
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
-    # Self-registration: first user becomes admin, others are staff
+    # Self-registration: first user becomes admin, others staff
     if request.method == "POST":
-        first_name = request.form["first_name"].strip()
-        last_name = request.form["last_name"].strip()
-        email = request.form["email"].strip().lower()
-        password = request.form["password"].strip()
+        first_name = request.form.get("first_name", "").strip()
+        last_name = request.form.get("last_name", "").strip()
+        email = request.form.get("email", "").strip().lower()
+        password = request.form.get("password", "").strip()
+
+        if not (first_name and last_name and email and password):
+            flash("All fields are required.", "danger")
+            return render_template("register.html")
 
         password_hash = generate_password_hash(password)
 
         conn = get_db()
         cur = conn.cursor()
 
-        # First user to register becomes admin
         cur.execute("SELECT COUNT(*) AS cnt FROM employees")
-        row = cur.fetchone()
-        count = row["cnt"]
-
+        count = (cur.fetchone()["cnt"] or 0)
         role = "admin" if count == 0 else "staff"
 
         try:
             cur.execute(
-                "INSERT INTO employees (first_name, last_name, email, password, role) VALUES (?, ?, ?, ?, ?)",
+                """
+                INSERT INTO employees (first_name, last_name, email, password, role)
+                VALUES (?, ?, ?, ?, ?)
+                """,
                 (first_name, last_name, email, password_hash, role),
             )
             conn.commit()
@@ -310,17 +339,9 @@ def dashboard():
             }
         )
 
-    all_done = all(
-        (m["status"] == "completed" and (m["best_score"] or 0) >= 80)
-        for m in module_status
-    )
+    all_done = all((m["status"] == "completed" and (m["best_score"] or 0) >= 80) for m in module_status)
 
-    return render_template(
-        "dashboard.html",
-        user=user,
-        modules=module_status,
-        all_done=all_done,
-    )
+    return render_template("dashboard.html", user=user, modules=module_status, all_done=all_done)
 
 
 @app.route("/module/<module_id>", methods=["GET", "POST"])
@@ -334,20 +355,17 @@ def module_view(module_id):
         flash("Module not found.", "danger")
         return redirect(url_for("dashboard"))
 
-    # POST: save score entered by user
+    # POST: save score entered by user (optional/manual)
     if request.method == "POST":
         try:
-            score = int(request.form["score"])
-        except (ValueError, KeyError):
+            score = int(request.form.get("score", "").strip())
+        except Exception:
             flash("Please enter a valid numeric score.", "danger")
             return redirect(url_for("module_view", module_id=module_id))
 
         conn = get_db()
         cur = conn.cursor()
-        cur.execute(
-            "SELECT id, best_score FROM progress WHERE employee_id=? AND module_id=?",
-            (user["id"], module_id),
-        )
+        cur.execute("SELECT id, best_score FROM progress WHERE employee_id=? AND module_id=?", (user["id"], module_id))
         row = cur.fetchone()
 
         status = "completed" if score >= 80 else "in_progress"
@@ -382,22 +400,15 @@ def module_view(module_id):
     # GET: load lesson content from modules/M#.md
     lesson_path = os.path.join(BASE_DIR, "modules", f"{module_id}.md")
     if os.path.exists(lesson_path):
-        with open(lesson_path, "r", encoding="utf-8") as f:
+        with open(lesson_path, "r", encoding="utf-8", errors="replace") as f:
             md_text = f.read()
         lesson_html = markdown.markdown(md_text, extensions=["extra"])
     else:
         lesson_html = "<p><em>Lesson content not uploaded yet.</em></p>"
 
-    return render_template(
-        "module.html",
-        module_id=module_id,
-        title=title,
-        user=user,
-        lesson_html=lesson_html,
-    )
+    return render_template("module.html", module_id=module_id, title=title, user=user, lesson_html=lesson_html)
 
 
-      
 @app.route("/quiz/<module_id>", methods=["GET", "POST"])
 def take_quiz(module_id):
     user = get_current_user()
@@ -412,23 +423,21 @@ def take_quiz(module_id):
     conn = get_db()
     cur = conn.cursor()
 
-    try:
-        cur.execute("""
-            SELECT id, question, answer_a, answer_b, answer_c, answer_d, correct_option
-            FROM quiz_questions
-            WHERE module_id=? AND active=1
-            ORDER BY RANDOM()
-            LIMIT 10
-        """, (module_id,))
-        questions = cur.fetchall()
-    except sqlite3.OperationalError:
-        conn.close()
-        flash("Quiz system not initialized yet (missing quiz tables).", "danger")
-        return redirect(url_for("module_view", module_id=module_id))
+    cur.execute(
+        """
+        SELECT id, question, answer_a, answer_b, answer_c, answer_d, correct_option
+        FROM quiz_questions
+        WHERE module_id=? AND active=1
+        ORDER BY RANDOM()
+        LIMIT 10
+        """,
+        (module_id,),
+    )
+    questions = cur.fetchall()
 
     if not questions:
         conn.close()
-        flash("No quiz questions loaded yet. Admin must import the quiz bank.", "warning")
+        flash("No quiz questions loaded yet. Admin must import or seed the quiz bank.", "warning")
         return redirect(url_for("module_view", module_id=module_id))
 
     if request.method == "POST":
@@ -444,14 +453,16 @@ def take_quiz(module_id):
         passed = 1 if score >= 80 else 0
 
         # Save attempt
-        cur.execute("""
+        cur.execute(
+            """
             INSERT INTO quiz_attempts (employee_id, module_id, score, total_questions, passed, created_at)
             VALUES (?, ?, ?, ?, ?, ?)
-        """, (user["id"], module_id, score, total, passed, datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+            """,
+            (user["id"], module_id, score, total, passed, datetime.now().strftime("%Y-%m-%d %H:%M:%S")),
+        )
 
         # Update progress
-        cur.execute("SELECT id, best_score FROM progress WHERE employee_id=? AND module_id=?",
-                    (user["id"], module_id))
+        cur.execute("SELECT id, best_score FROM progress WHERE employee_id=? AND module_id=?", (user["id"], module_id))
         row = cur.fetchone()
 
         status = "completed" if passed else "in_progress"
@@ -460,16 +471,22 @@ def take_quiz(module_id):
         if row:
             best = row["best_score"] or 0
             best_score = max(best, score)
-            cur.execute("""
+            cur.execute(
+                """
                 UPDATE progress
                 SET best_score=?, status=?, date_completed=?
                 WHERE id=?
-            """, (best_score, status, date_completed, row["id"]))
+                """,
+                (best_score, status, date_completed, row["id"]),
+            )
         else:
-            cur.execute("""
+            cur.execute(
+                """
                 INSERT INTO progress (employee_id, module_id, best_score, status, date_completed)
                 VALUES (?, ?, ?, ?, ?)
-            """, (user["id"], module_id, score, status, date_completed))
+                """,
+                (user["id"], module_id, score, status, date_completed),
+            )
 
         conn.commit()
         conn.close()
@@ -478,17 +495,12 @@ def take_quiz(module_id):
         return redirect(url_for("dashboard"))
 
     conn.close()
-    return render_template(
-        "quiz.html", 
-        module_id=module_id, 
-        title=title, 
-        questions=questions
-           )
+    return render_template("quiz.html", module_id=module_id, title=title, questions=questions)
+
 
 @app.route("/admin/import-quiz", methods=["GET", "POST"])
 @admin_required
 def import_quiz():
-
     if request.method == "POST":
         file = request.files.get("file")
         if not file or file.filename.strip() == "":
@@ -497,6 +509,7 @@ def import_quiz():
 
         raw = file.stream.read()
 
+        # Handle CSVs exported from Excel/Windows with CP1252 "smart quotes"
         try:
             text = raw.decode("utf-8")
         except UnicodeDecodeError:
@@ -530,12 +543,14 @@ def import_quiz():
                 skipped += 1
                 continue
 
-            cur.execute("""
-                INSERT INTO quiz_questions
-                (module_id, question, answer_a, answer_b, answer_c, answer_d, correct_option)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            """, (module_id, question, answer_a, answer_b, answer_c, answer_d, correct_option))
-
+            cur.execute(
+                """
+                INSERT OR IGNORE INTO quiz_questions
+                (module_id, question, answer_a, answer_b, answer_c, answer_d, correct_option, active)
+                VALUES (?, ?, ?, ?, ?, ?, ?, 1)
+                """,
+                (module_id, question, answer_a, answer_b, answer_c, answer_d, correct_option),
+            )
             inserted += 1
 
         conn.commit()
@@ -544,7 +559,6 @@ def import_quiz():
         flash(f"Import complete. Inserted: {inserted}. Skipped: {skipped}.", "success")
         return redirect(url_for("admin_dashboard"))
 
-    # THIS LINE MUST NOT BE INDENTED
     return render_template("import_quiz.html")
 
 
@@ -577,18 +591,13 @@ def certificate():
             }
         )
 
-    all_done = all(
-        (m["status"] == "completed" and (m["best_score"] or 0) >= 80)
-        for m in module_status
-    )
+    all_done = all((m["status"] == "completed" and (m["best_score"] or 0) >= 80) for m in module_status)
 
     if not all_done:
         flash("You have not completed all required modules with a passing score.", "warning")
         return redirect(url_for("dashboard"))
 
-    completion_date = max(
-        m["date_completed"] for m in module_status if m["date_completed"]
-    )
+    completion_date = max(m["date_completed"] for m in module_status if m["date_completed"])
 
     return render_template(
         "certificate.html",
@@ -633,7 +642,7 @@ def admin_dashboard():
 
         cur.execute(
             f"""
-            SELECT 
+            SELECT
                 COUNT(*) AS total,
                 SUM(CASE WHEN status='completed' AND (best_score >= 80) THEN 1 ELSE 0 END) AS completed
             FROM progress
@@ -698,7 +707,7 @@ def admin_export():
 
     cur.execute(
         f"""
-        SELECT 
+        SELECT
             e.first_name, e.last_name, e.email, e.role,
             p.module_id, p.best_score, p.status, p.date_completed
         FROM employees e
@@ -751,9 +760,7 @@ def admin_export():
         mimetype="text/csv",
         headers={"Content-Disposition": "attachment; filename=cfm_training_export.csv"},
     )
-@app.route("/quiz/<module_id>", methods=["GET", "POST"])
-def quiz(module_id):
-    return take_quiz(module_id)
+
 
 @app.route("/logout")
 def logout():
