@@ -429,7 +429,7 @@ def take_quiz(module_id):
         FROM quiz_questions
         WHERE module_id=? AND active=1
         ORDER BY RANDOM()
-        LIMIT 10
+        LIMIT 8
         """,
         (module_id,),
     )
