@@ -143,12 +143,15 @@ def admin_required(f):
 
 with app.app_context():
     init_db()
-    seed_quiz_questions()
 
 def seed_quiz_questions():
     seed_path = os.path.join(BASE_DIR, "data", "quiz_questions.csv")
     if not os.path.exists(seed_path):
         return
+
+with app.app_context():
+    init_db()
+    seed_quiz_questions()
 
     conn = get_db()
     cur = conn.cursor()
